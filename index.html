@@ -78,7 +78,7 @@ async function fetchProfile(){
   document.getElementById("chatApp").style.display = "flex";
   document.getElementById("whoami").textContent = myEmail;
   loadMessages();
-  pollTimer = setInterval(loadMessages, 3000);
+  pollTimer = setInterval(loadMessages, 1500);
 }
 
 async function driveGet(){
@@ -101,13 +101,16 @@ async function driveSet(list){
   });
 }
 
-let lastCount = -1;
+let cachedList = [];   // last known-good list (server + optimistic local additions)
+let syncing = false;   // true while a send is uploading, to avoid poll clobbering it
+
 async function loadMessages(){
+  if (syncing) return; // don't let a poll overwrite an in-flight optimistic send
   try {
     const list = await driveGet();
-    if (list.length === lastCount) return;
-    lastCount = list.length;
-    render(list);
+    if (list.length === cachedList.length) return;
+    cachedList = list;
+    render(cachedList);
   } catch(e){ console.error(e); }
 }
 
@@ -117,7 +120,8 @@ function render(list){
     const mine = m.sender === myEmail;
     const time = new Date(m.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
     const safe = m.text.replace(/</g, "&lt;");
-    return `<div class="row ${mine ? "me" : "them"}">
+    const pending = m.pending ? ' style="opacity:0.55;"' : "";
+    return `<div class="row ${mine ? "me" : "them"}"${pending}>
       <div><div class="bubble">${safe}</div><div class="meta">${mine ? "You" : m.sender.split("@")[0]} · ${time}</div></div>
     </div>`;
   }).join("");
@@ -132,13 +136,29 @@ async function sendMessage(){
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
+
+  // 1. Show it instantly, marked pending
+  const optimisticMsg = { sender: myEmail, text, ts: Date.now(), pending: true };
+  cachedList = [...cachedList, optimisticMsg];
+  render(cachedList);
+
+  // 2. Sync to Drive in the background
+  syncing = true;
   try {
-    const list = await driveGet();
-    list.push({ sender: myEmail, text, ts: Date.now() });
-    await driveSet(list);
-    lastCount = list.length;
-    render(list);
-  } catch(e){ alert("Send failed: " + e.message); }
+    const freshList = await driveGet(); // pick up anything the other person sent meanwhile
+    const finalMsg = { sender: myEmail, text, ts: optimisticMsg.ts };
+    const merged = [...freshList, finalMsg];
+    await driveSet(merged);
+    cachedList = merged;
+    render(cachedList);
+  } catch(e){
+    // roll back the optimistic bubble on failure
+    cachedList = cachedList.filter(m => m !== optimisticMsg);
+    render(cachedList);
+    alert("Send failed: " + e.message);
+  } finally {
+    syncing = false;
+  }
 }
 </script>
 </body>
