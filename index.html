@@ -7,8 +7,10 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;background:#f5f5f7;color:#1a1a1a;display:flex;flex-direction:column;height:100vh;}
-  #signin{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-  header{padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5ea;font-weight:600;display:flex;justify-content:space-between;}
+  #signin{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 24px;}
+  header{padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5ea;font-weight:600;display:flex;justify-content:space-between;align-items:center;}
+  #whoami{display:flex;align-items:center;gap:10px;font-weight:400;font-size:13px;color:#6a6a6e;}
+  #signOutBtn{border:none;background:none;color:#0a84ff;font-size:13px;cursor:pointer;padding:4px;}
   #messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;}
   .row{display:flex;}
   .row.me{justify-content:flex-end;}
@@ -19,7 +21,10 @@
   #inputbar{display:flex;gap:8px;padding:10px;background:#fff;border-top:1px solid #e5e5ea;}
   #msgInput{flex:1;padding:10px 14px;border-radius:20px;border:1px solid #e5e5ea;font-size:15px;}
   #sendBtn{padding:10px 18px;border-radius:20px;border:none;background:#0a84ff;color:#fff;cursor:pointer;}
+  #sendBtn:disabled{background:#b5d8ff;cursor:default;}
   #chatApp{display:none;flex-direction:column;height:100%;}
+  #reauth{display:none;padding:8px 12px;background:#fff3cd;color:#7a5b00;font-size:13px;text-align:center;}
+  #reauth button{margin-left:8px;border:none;background:#0a84ff;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -31,7 +36,14 @@
 </div>
 
 <div id="chatApp">
-  <header><span>DuoChat</span><span id="whoami"></span></header>
+  <div id="reauth">Your session expired. <button id="reauthBtn">Sign in again</button></div>
+  <header>
+    <span>DuoChat</span>
+    <span id="whoami">
+      <span id="whoamiEmail"></span>
+      <button id="signOutBtn">Sign out</button>
+    </span>
+  </header>
   <div id="messages"></div>
   <div id="inputbar">
     <input id="msgInput" placeholder="Type a message…" autocomplete="off">
@@ -43,20 +55,28 @@
 // ====== CONFIGURE THESE TWO ======
 const CLIENT_ID = "700593681149-5u5v6vhh3bd7rsctjen480c2dghep5lc.apps.googleusercontent.com";
 const FILE_ID    = "1XACWDKwUowtNUu6fJLCnPjM15Ny872Fe";
-// ==================================
 
 const SCOPE = "https://www.googleapis.com/auth/drive";
+
 let accessToken = null;
 let myEmail = null;
 let tokenClient;
 let pollTimer;
+let sending = false;
+
+const messagesEl   = document.getElementById("messages");
+const msgInput     = document.getElementById("msgInput");
+const sendBtn      = document.getElementById("sendBtn");
+const reauthBanner = document.getElementById("reauth");
 
 window.onload = () => {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPE,
     callback: (resp) => {
+      if (resp.error) { console.error(resp); return; }
       accessToken = resp.access_token;
+      reauthBanner.style.display = "none";
       fetchProfile();
     }
   });
@@ -66,6 +86,9 @@ window.onload = () => {
   btn.style.cssText = "padding:12px 24px;border-radius:12px;border:none;background:#0a84ff;color:#fff;font-size:16px;cursor:pointer;";
   btn.onclick = () => tokenClient.requestAccessToken();
   document.getElementById("gsiBtn").appendChild(btn);
+
+  document.getElementById("reauthBtn").onclick = () => tokenClient.requestAccessToken();
+  document.getElementById("signOutBtn").onclick = signOut;
 };
 
 async function fetchProfile(){
@@ -76,22 +99,43 @@ async function fetchProfile(){
   myEmail = data.email;
   document.getElementById("signin").style.display = "none";
   document.getElementById("chatApp").style.display = "flex";
-  document.getElementById("whoami").textContent = myEmail;
+  document.getElementById("whoamiEmail").textContent = myEmail;
+  cachedList = [];
   loadMessages();
+  clearInterval(pollTimer);
   pollTimer = setInterval(loadMessages, 1500);
 }
+
+function signOut(){
+  clearInterval(pollTimer);
+  if (accessToken) {
+    google.accounts.oauth2.revoke(accessToken, () => {});
+  }
+  accessToken = null;
+  myEmail = null;
+  cachedList = [];
+  document.getElementById("chatApp").style.display = "none";
+  document.getElementById("signin").style.display = "flex";
+  reauthBanner.style.display = "none";
+}
+
+
+class AuthExpiredError extends Error {}
 
 async function driveGet(){
   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${FILE_ID}?alt=media`, {
     headers: { Authorization: "Bearer " + accessToken }
   });
+  if (res.status === 401) throw new AuthExpiredError();
   if (!res.ok) throw new Error("Drive read failed: " + res.status);
   const text = await res.text();
-  return text.trim() ? JSON.parse(text) : [];
+  if (!text.trim()) return [];
+  const parsed = JSON.parse(text);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 async function driveSet(list){
-  await fetch(`https://www.googleapis.com/upload/drive/v3/files/${FILE_ID}?uploadType=media`, {
+  const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${FILE_ID}?uploadType=media`, {
     method: "PATCH",
     headers: {
       Authorization: "Bearer " + accessToken,
@@ -99,65 +143,102 @@ async function driveSet(list){
     },
     body: JSON.stringify(list)
   });
+  if (res.status === 401) throw new AuthExpiredError();
+  if (!res.ok) throw new Error("Drive write failed: " + res.status);
 }
 
-let cachedList = [];   // last known-good list (server + optimistic local additions)
-let syncing = false;   // true while a send is uploading, to avoid poll clobbering it
+function newId(){
+  return (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+}
+
+function handleAuthExpired(){
+  clearInterval(pollTimer);
+  reauthBanner.style.display = "block";
+}
+
+let cachedList = [];  
+let syncing = false;   
+function signature(list){
+
+  return list.map(m => m.id || (m.sender + "|" + m.ts)).join(",");
+}
 
 async function loadMessages(){
-  if (syncing) return; // don't let a poll overwrite an in-flight optimistic send
+  if (syncing) return; 
   try {
     const list = await driveGet();
-    if (list.length === cachedList.length) return;
+    if (signature(list) === signature(cachedList)) return;
     cachedList = list;
     render(cachedList);
-  } catch(e){ console.error(e); }
+  } catch(e){
+    if (e instanceof AuthExpiredError) handleAuthExpired();
+    else console.error(e);
+  }
+}
+
+function escapeHtml(str){
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function isScrolledToBottom(){
+  return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 40;
 }
 
 function render(list){
-  const el = document.getElementById("messages");
-  el.innerHTML = list.map(m => {
+  const stickToBottom = isScrolledToBottom();
+  messagesEl.innerHTML = list.map(m => {
     const mine = m.sender === myEmail;
     const time = new Date(m.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-    const safe = m.text.replace(/</g, "&lt;");
+    const safe = escapeHtml(m.text);
     const pending = m.pending ? ' style="opacity:0.55;"' : "";
     return `<div class="row ${mine ? "me" : "them"}"${pending}>
       <div><div class="bubble">${safe}</div><div class="meta">${mine ? "You" : m.sender.split("@")[0]} · ${time}</div></div>
     </div>`;
   }).join("");
-  el.scrollTop = el.scrollHeight;
+  if (stickToBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-document.getElementById("sendBtn").onclick = sendMessage;
-document.getElementById("msgInput").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+sendBtn.onclick = sendMessage;
+msgInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
 
 async function sendMessage(){
-  const input = document.getElementById("msgInput");
-  const text = input.value.trim();
+  if (sending) return; 
+  const text = msgInput.value.trim();
   if (!text) return;
-  input.value = "";
+  msgInput.value = "";
 
-  // 1. Show it instantly, marked pending
-  const optimisticMsg = { sender: myEmail, text, ts: Date.now(), pending: true };
+  sending = true;
+  sendBtn.disabled = true;
+
+
+  const optimisticMsg = { id: newId(), sender: myEmail, text, ts: Date.now(), pending: true };
   cachedList = [...cachedList, optimisticMsg];
   render(cachedList);
 
-  // 2. Sync to Drive in the background
+
   syncing = true;
   try {
-    const freshList = await driveGet(); // pick up anything the other person sent meanwhile
-    const finalMsg = { sender: myEmail, text, ts: optimisticMsg.ts };
+    const freshList = await driveGet(); 
+    const finalMsg = { id: optimisticMsg.id, sender: myEmail, text, ts: optimisticMsg.ts };
     const merged = [...freshList, finalMsg];
     await driveSet(merged);
     cachedList = merged;
     render(cachedList);
   } catch(e){
-    // roll back the optimistic bubble on failure
-    cachedList = cachedList.filter(m => m !== optimisticMsg);
+
+    cachedList = cachedList.filter(m => m.id !== optimisticMsg.id);
     render(cachedList);
-    alert("Send failed: " + e.message);
+    if (e instanceof AuthExpiredError) handleAuthExpired();
+    else alert("Send failed: " + e.message);
   } finally {
     syncing = false;
+    sending = false;
+    sendBtn.disabled = false;
   }
 }
 </script>
