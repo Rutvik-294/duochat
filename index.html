@@ -1,246 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DuoChat (Google Drive)</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glass Messenger</title>
 <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;background:#f5f5f7;color:#1a1a1a;display:flex;flex-direction:column;height:100vh;}
-  #signin{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 24px;}
-  header{padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5ea;font-weight:600;display:flex;justify-content:space-between;align-items:center;}
-  #whoami{display:flex;align-items:center;gap:10px;font-weight:400;font-size:13px;color:#6a6a6e;}
-  #signOutBtn{border:none;background:none;color:#0a84ff;font-size:13px;cursor:pointer;padding:4px;}
-  #messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;}
-  .row{display:flex;}
-  .row.me{justify-content:flex-end;}
-  .bubble{max-width:75%;padding:10px 14px;border-radius:18px;font-size:15px;white-space:pre-wrap;word-wrap:break-word;}
-  .me .bubble{background:#0a84ff;color:#fff;}
-  .them .bubble{background:#e9e9eb;color:#1a1a1a;}
-  .meta{font-size:10px;color:#8a8a8e;padding:2px 6px;}
-  #inputbar{display:flex;gap:8px;padding:10px;background:#fff;border-top:1px solid #e5e5ea;}
-  #msgInput{flex:1;padding:10px 14px;border-radius:20px;border:1px solid #e5e5ea;font-size:15px;}
-  #sendBtn{padding:10px 18px;border-radius:20px;border:none;background:#0a84ff;color:#fff;cursor:pointer;}
-  #sendBtn:disabled{background:#b5d8ff;cursor:default;}
-  #chatApp{display:none;flex-direction:column;height:100%;}
-  #reauth{display:none;padding:8px 12px;background:#fff3cd;color:#7a5b00;font-size:13px;text-align:center;}
-  #reauth button{margin-left:8px;border:none;background:#0a84ff;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;}
-</style>
-</head>
+:root{--c1:#ff7ab8;--c2:#6a8bff;--c3:#3ee0c4;--bg:#e8ebff;--tx:#10152a;--sub:rgba(16,21,42,.58);--ga:rgba(255,255,255,.62);--gb:rgba(255,255,255,.18);--ed:rgba(255,255,255,.7);--sh:rgba(40,50,120,.2);--bd:rgba(255,255,255,.55);--me1:rgba(80,165,255,.9);--me2:rgba(20,110,255,.64);--sheet:rgba(240,243,255,.8);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#090b1b;--tx:#f4f6ff;--sub:rgba(244,246,255,.58);--ga:rgba(255,255,255,.22);--gb:rgba(255,255,255,.05);--ed:rgba(255,255,255,.35);--sh:rgba(0,0,0,.5);--bd:rgba(255,255,255,.22);--sheet:rgba(24,27,52,.82)}}
+:root[data-theme="dark"]{--bg:#090b1b;--tx:#f4f6ff;--sub:rgba(244,246,255,.58);--ga:rgba(255,255,255,.22);--gb:rgba(255,255,255,.05);--ed:rgba(255,255,255,.35);--sh:rgba(0,0,0,.5);--bd:rgba(255,255,255,.22);--sheet:rgba(24,27,52,.82)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.35 -apple-system,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.orb{position:fixed;border-radius:50%;filter:blur(55px);opacity:.8;animation:drift 16s ease-in-out infinite alternate;z-index:0}
+.o1{width:46vmax;height:46vmax;left:-12vmax;top:-10vmax;background:var(--c1)}.o2{width:50vmax;height:50vmax;right:-16vmax;top:22%;background:var(--c2);animation-delay:-5s}.o3{width:40vmax;height:40vmax;left:8%;bottom:-16vmax;background:var(--c3);animation-delay:-9s}
+@keyframes drift{to{transform:translate(8vmax,-6vmax) scale(1.15)}}
+.glass{background:linear-gradient(135deg,var(--ga),var(--gb));-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--bd);box-shadow:inset 0 1.5px 1px var(--ed),inset 0 -1px 2px rgba(255,255,255,.12),0 10px 32px var(--sh);position:relative}
+.glass::before{content:"";position:absolute;inset:1px;border-radius:inherit;background:linear-gradient(165deg,rgba(255,255,255,.45),transparent 38%);opacity:.5;pointer-events:none}
+.glass>*{position:relative}
+#app{position:relative;z-index:1;height:100%;display:flex;gap:12px;padding:12px;box-sizing:border-box;max-width:1240px;margin:0 auto}
+.side{width:350px;flex:none;border-radius:30px;display:flex;flex-direction:column;padding:14px 12px;gap:10px;min-height:0}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.top{display:flex;align-items:center;justify-content:space-between;padding:0 6px}.top h2{margin:0;font-size:26px;letter-spacing:-.5px}
+.rb{width:42px;height:42px;border-radius:50%;cursor:pointer;display:grid;place-items:center;font-size:20px;flex:none;padding:0}
+.srch{border-radius:999px;padding:4px 16px;display:flex}
+input.f{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--tx);font:inherit;padding:9px 0}
+input.f::placeholder{color:var(--sub)}
+#chats{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;scrollbar-width:none;padding:2px}
+#chats::-webkit-scrollbar,#list::-webkit-scrollbar{display:none}
+.ch{display:flex;gap:12px;align-items:center;padding:9px 13px;border-radius:26px;cursor:pointer;flex:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.ch:hover{transform:scale(1.015)}.ch.act{background:linear-gradient(135deg,var(--me1),var(--me2));color:#fff}.ch.act .l,.ch.act .tm{color:rgba(255,255,255,.8)}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none;border:2px solid var(--bd);position:relative}
+.av.on::after{content:"";position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:#34d27b;border:2px solid #fff;box-shadow:0 0 8px #34d27b}
+.mid{flex:1;min-width:0}.n{font-weight:650}.l{font-size:14px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}.tm{font-size:11px;color:var(--sub)}
+.bd{min-width:20px;height:20px;border-radius:10px;background:#2f8dff;color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;padding:0 6px;box-shadow:0 0 10px rgba(47,141,255,.7)}
+.hd{margin:0 0 0;padding:8px 16px 8px 10px;border-radius:999px;display:flex;align-items:center;gap:12px;flex:none}
+.back{display:none}.hd .av{width:40px;height:40px}#hn{font-weight:650;line-height:1.1}#hs{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#list{flex:1;overflow-y:auto;padding:14px 6px 8px;display:flex;flex-direction:column;gap:5px;scrollbar-width:none;min-height:0}
+.row{display:flex}.row.me{justify-content:flex-end}.w{max-width:78%;display:flex;flex-direction:column}.me .w{align-items:flex-end}
+.b{padding:8px 14px;border-radius:22px;cursor:pointer;transform-origin:0 100%;transition:opacity .3s,transform .45s cubic-bezier(.34,1.56,.64,1);overflow-wrap:anywhere}
+.me .b{transform-origin:100% 100%;color:#fff;background:linear-gradient(135deg,var(--me1),var(--me2));border-color:rgba(255,255,255,.5)}
+.b.hide{opacity:0;transform:scale(.88)}.b.in{animation:pop .6s cubic-bezier(.34,1.56,.64,1) both}.b.burst{animation:pop2 .55s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{from{opacity:0;transform:translateY(24px) scale(.5);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@keyframes pop2{from{opacity:0;transform:scale(.3);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+.who{font-size:12px;font-weight:700;color:#d6457f;margin-bottom:1px}
+.q{border-left:3px solid rgba(255,255,255,.8);background:rgba(255,255,255,.2);border-radius:10px;padding:3px 8px;margin:2px 0 4px;font-size:13px;opacity:.9}.q b{display:block;font-size:12px}
+.ln{display:flex;align-items:flex-end;gap:9px}.mt{font-size:10px;opacity:.65;white-space:nowrap;flex:none}.tk{margin-left:3px;letter-spacing:-2px}.tk.rd{color:#7ff0ff;opacity:1;font-weight:700}
+.rx{display:flex;gap:4px;margin:-7px 8px 0;z-index:2;position:relative}.rx span{font-size:13px;padding:1px 7px;border-radius:12px;background:var(--sheet);border:1px solid var(--bd);box-shadow:0 3px 10px var(--sh)}
+.day{align-self:center;font-size:12px;color:var(--sub);padding:3px 14px;margin:8px 0;border-radius:999px;background:var(--gb);border:1px solid var(--bd)}
+#menu{position:fixed;z-index:60;display:none;gap:2px;padding:5px 8px;border-radius:999px;align-items:center}
+#menu button{background:none;border:0;font-size:22px;cursor:pointer;padding:4px 6px;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}#menu button:hover{transform:scale(1.3)}
+.bar{margin:0 6px 6px;padding:6px 8px 6px 16px;border-radius:20px;display:none;align-items:center;gap:8px;font-size:13px}.bar div{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar b{display:block}
+.bar button,#emo button{background:none;border:0;cursor:pointer;font-size:18px}
+#emo{display:none;margin:0 6px 6px;padding:6px 10px;border-radius:24px;flex-wrap:wrap;gap:2px}#emo button{font-size:24px}
+.comp{margin:4px 0 0;display:flex;gap:10px;align-items:center;flex:none}
+.field{flex:1;min-width:0;border-radius:999px;padding:5px 6px 5px 8px;display:flex;align-items:center}
+.field .rb{width:38px;height:38px;border:0;background:none;box-shadow:none;font-size:22px}.field .rb::before{display:none}
+#send{width:50px;height:50px;border-radius:50%;border:1px solid rgba(255,255,255,.55);cursor:pointer;display:grid;place-items:center;color:#fff;flex:none;background:linear-gradient(135deg,var(--me1),var(--me2));box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),0 8px 24px rgba(30,110,255,.45);transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .2s}
+#send:active{transform:scale(.88)}#send:disabled{opacity:.45;cursor:default}#send.go{animation:bump .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes bump{30%{transform:scale(.8)}to{transform:scale(1)}}
+#empty{margin:auto;padding:14px 26px;border-radius:999px;color:var(--sub);text-align:center}
+.mod{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(10,12,30,.35)}
+.sheet{width:min(380px,92vw);max-height:80vh;border-radius:30px;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--sheet)}.sheet h3{margin:0}
+.pick{overflow-y:auto;display:flex;flex-direction:column;gap:6px;max-height:36vh}.pk{display:flex;align-items:center;gap:10px;padding:4px 8px;border-radius:16px;cursor:pointer}.pk .av{width:34px;height:34px}.pk span{flex:1}
+.acts{display:flex;gap:8px;justify-content:flex-end}.pbtn{padding:9px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);cursor:pointer;color:#fff;font-weight:650;background:linear-gradient(135deg,var(--me1),var(--me2))}.pbtn.g{background:var(--gb);color:var(--tx)}
+#air{position:fixed;inset:0;pointer-events:none;z-index:52}
+.air{position:absolute;left:0;top:0;border-radius:50%;will-change:transform;background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.95) 0 8%,rgba(255,255,255,0) 22%),radial-gradient(circle at 50% 50%,rgba(130,195,255,.16) 52%,rgba(60,150,255,.55) 100%);border:1.5px solid rgba(255,255,255,.75);box-shadow:inset 0 -7px 12px rgba(80,170,255,.5),inset 0 4px 8px rgba(255,255,255,.6),0 6px 22px rgba(40,130,255,.4)}
+.air::after{content:"";position:absolute;right:17%;bottom:15%;width:22%;height:11%;border-radius:50%;background:rgba(255,255,255,.4);transform:rotate(-38deg)}
+.ring{position:absolute;width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.85);box-shadow:0 0 14px rgba(70,160,255,.6)}
+.drop{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,rgba(90,170,255,.92) 62%)}
+@media(max-width:760px){#app{padding:8px;gap:0}.side{width:100%}.main{display:none}#app.op .side{display:none}#app.op .main{display:flex}.back{display:grid}}
+</style></head>
 <body>
-
-<div id="signin">
-  <h2>DuoChat</h2>
-  <p>Sign in with the Google account that has access to the shared file.</p>
-  <div id="gsiBtn"></div>
-</div>
-
-<div id="chatApp">
-  <div id="reauth">Your session expired. <button id="reauthBtn">Sign in again</button></div>
-  <header>
-    <span>DuoChat</span>
-    <span id="whoami">
-      <span id="whoamiEmail"></span>
-      <button id="signOutBtn">Sign out</button>
-    </span>
-  </header>
-  <div id="messages"></div>
-  <div id="inputbar">
-    <input id="msgInput" placeholder="Type a message…" autocomplete="off">
-    <button id="sendBtn">Send</button>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+<div id="app">
+ <aside class="side glass">
+  <div class="top"><h2>Chats</h2><button class="rb glass" id="ng" title="New group">👥</button></div>
+  <div class="srch glass"><input class="f" id="q" placeholder="Search"></div>
+  <div id="chats"></div>
+ </aside>
+ <section class="main">
+  <div id="none" id="empty" style="display:none"></div>
+  <header class="hd glass" id="hd" style="display:none"><button class="rb glass back" id="bk">‹</button><div id="hav"></div><div style="min-width:0"><div id="hn"></div><div id="hs"></div></div></header>
+  <div id="list"><div id="empty" class="glass">Pick a chat to start 💬</div></div>
+  <div class="bar glass" id="rp"><div><b></b><span></span></div><button id="rx">✕</button></div>
+  <div id="emo" class="glass"></div>
+  <div class="comp" id="comp" style="display:none">
+   <div class="field glass"><button class="rb" id="eb" type="button">😊</button><input class="f" id="inp" placeholder="Message" autocomplete="off" enterkeyhint="send"></div>
+   <button id="send" type="button" aria-label="Send" disabled><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
   </div>
+ </section>
 </div>
-
+<div id="menu" class="glass"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-// ====== CONFIGURE THESE TWO ======
-const CLIENT_ID = "700593681149-5u5v6vhh3bd7rsctjen480c2dghep5lc.apps.googleusercontent.com";
-const FILE_ID    = "1XACWDKwUowtNUu6fJLCnPjM15Ny872Fe";
-
-const SCOPE = "https://www.googleapis.com/auth/drive";
-
-let accessToken = null;
-let myEmail = null;
-let tokenClient;
-let pollTimer;
-let sending = false;
-
-const messagesEl   = document.getElementById("messages");
-const msgInput     = document.getElementById("msgInput");
-const sendBtn      = document.getElementById("sendBtn");
-const reauthBanner = document.getElementById("reauth");
-
-window.onload = () => {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPE,
-    callback: (resp) => {
-      if (resp.error) { console.error(resp); return; }
-      accessToken = resp.access_token;
-      reauthBanner.style.display = "none";
-      fetchProfile();
-    }
-  });
-
-  const btn = document.createElement("button");
-  btn.textContent = "Sign in with Google";
-  btn.style.cssText = "padding:12px 24px;border-radius:12px;border:none;background:#0a84ff;color:#fff;font-size:16px;cursor:pointer;";
-  btn.onclick = () => tokenClient.requestAccessToken();
-  document.getElementById("gsiBtn").appendChild(btn);
-
-  document.getElementById("reauthBtn").onclick = () => tokenClient.requestAccessToken();
-  document.getElementById("signOutBtn").onclick = signOut;
+/* ===== STEP 1: paste your Firebase web config here (Project settings > Your apps > Web) ===== */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyDxDy-ekzrISwD1u8Q8DCgSk4GrwgLgPgE",
+  authDomain:"blueeyes-35da6.firebaseapp.com",
+  projectId:"blueeyes-35da6",
+  storageBucket:"blueeyes-35da6.firebasestorage.app",
+  messagingSenderId:"828595615646",
+  appId:"1:828595615646:web:c0f2b962d915f7b82dc88f"
 };
-
-async function fetchProfile(){
-  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-    headers: { Authorization: "Bearer " + accessToken }
-  });
-  const data = await res.json();
-  myEmail = data.email;
-  document.getElementById("signin").style.display = "none";
-  document.getElementById("chatApp").style.display = "flex";
-  document.getElementById("whoamiEmail").textContent = myEmail;
-  cachedList = [];
-  loadMessages();
-  clearInterval(pollTimer);
-  pollTimer = setInterval(loadMessages, 1500);
-}
-
-function signOut(){
-  clearInterval(pollTimer);
-  if (accessToken) {
-    google.accounts.oauth2.revoke(accessToken, () => {});
-  }
-  accessToken = null;
-  myEmail = null;
-  cachedList = [];
-  document.getElementById("chatApp").style.display = "none";
-  document.getElementById("signin").style.display = "flex";
-  reauthBanner.style.display = "none";
-}
-
-
-class AuthExpiredError extends Error {}
-
-async function driveGet(){
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${FILE_ID}?alt=media`, {
-    headers: { Authorization: "Bearer " + accessToken }
-  });
-  if (res.status === 401) throw new AuthExpiredError();
-  if (!res.ok) throw new Error("Drive read failed: " + res.status);
-  const text = await res.text();
-  if (!text.trim()) return [];
-  const parsed = JSON.parse(text);
-  return Array.isArray(parsed) ? parsed : [];
-}
-
-async function driveSet(list){
-  const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${FILE_ID}?uploadType=media`, {
-    method: "PATCH",
-    headers: {
-      Authorization: "Bearer " + accessToken,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(list)
-  });
-  if (res.status === 401) throw new AuthExpiredError();
-  if (!res.ok) throw new Error("Drive write failed: " + res.status);
-}
-
-function newId(){
-  return (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
-}
-
-function handleAuthExpired(){
-  clearInterval(pollTimer);
-  reauthBanner.style.display = "block";
-}
-
-let cachedList = [];  
-let syncing = false;   
-function signature(list){
-
-  return list.map(m => m.id || (m.sender + "|" + m.ts)).join(",");
-}
-
-async function loadMessages(){
-  if (syncing) return; 
-  try {
-    const list = await driveGet();
-    if (signature(list) === signature(cachedList)) return;
-    cachedList = list;
-    render(cachedList);
-  } catch(e){
-    if (e instanceof AuthExpiredError) handleAuthExpired();
-    else console.error(e);
-  }
-}
-
-function escapeHtml(str){
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function isScrolledToBottom(){
-  return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 40;
-}
-
-function render(list){
-  const stickToBottom = isScrolledToBottom();
-  messagesEl.innerHTML = list.map(m => {
-    const mine = m.sender === myEmail;
-    const time = new Date(m.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-    const safe = escapeHtml(m.text);
-    const pending = m.pending ? ' style="opacity:0.55;"' : "";
-    return `<div class="row ${mine ? "me" : "them"}"${pending}>
-      <div><div class="bubble">${safe}</div><div class="meta">${mine ? "You" : m.sender.split("@")[0]} · ${time}</div></div>
-    </div>`;
-  }).join("");
-  if (stickToBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-sendBtn.onclick = sendMessage;
-msgInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
-
-async function sendMessage(){
-  if (sending) return; 
-  const text = msgInput.value.trim();
-  if (!text) return;
-  msgInput.value = "";
-
-  sending = true;
-  sendBtn.disabled = true;
-
-
-  const optimisticMsg = { id: newId(), sender: myEmail, text, ts: Date.now(), pending: true };
-  cachedList = [...cachedList, optimisticMsg];
-  render(cachedList);
-
-
-  syncing = true;
-  try {
-    const freshList = await driveGet(); 
-    const finalMsg = { id: optimisticMsg.id, sender: myEmail, text, ts: optimisticMsg.ts };
-    const merged = [...freshList, finalMsg];
-    await driveSet(merged);
-    cachedList = merged;
-    render(cachedList);
-  } catch(e){
-
-    cachedList = cachedList.filter(m => m.id !== optimisticMsg.id);
-    render(cachedList);
-    if (e instanceof AuthExpiredError) handleAuthExpired();
-    else alert("Send failed: " + e.message);
-  } finally {
-    syncing = false;
-    sending = false;
-    sendBtn.disabled = false;
-  }
-}
+/* ================================================================================================ */
 </script>
-</body>
-</html>
+<script>
+const $=s=>document.querySelector(s),E=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const inp=$('#inp'),send=$('#send'),list=$('#list');
+let me={id:null,name:'You'},usr=null,db=null,U={},P={},M=[],G=[],Rd={},by={},cur=null,reply=null,hideId=null,shown={},tl=0;
+const now=()=>Date.now(),fmt=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const nm=i=>i===me.id?'You':(U[i]&&U[i].name)||'Someone',online=i=>U[i]&&now()-(U[i].seen||0)<110000;
+const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))%360;return h};
+const rdBy=(u,c)=>((Rd[u]||{})[c]||0),dm=(a,b)=>'d_'+[a,b].sort().join('~');
+function av(id,label,grp){const a=E('div','av',(label||nm(id))[0].toUpperCase());const c=null;
+ a.style.background=grp?'linear-gradient(135deg,#a78bfa,#6366f1)':(c||'linear-gradient(135deg,hsl('+hue(id)+',80%,66%),hsl('+(hue(id)+40)%360+',80%,56%))');return a}
+function chats(){const L=[];Object.keys(U).filter(i=>i!==me.id).forEach(i=>L.push({id:dm(me.id,i),name:nm(i),peer:i}));
+ G.filter(g=>(g.members||[]).includes(me.id)).forEach(g=>L.push({id:g.id,name:g.name,grp:1,members:g.members}));
+ L.forEach(c=>{const ms=by[c.id]||[];c.last=ms[ms.length-1];c.un=ms.filter(m=>m.uid!==me.id&&m.ts>rdBy(me.id,c.id)).length});
+ return L.sort((a,b)=>(b.last?b.last.ts:0)-(a.last?a.last.ts:0)||a.name.localeCompare(b.name))}
+function side(){const q=$('#q').value.toLowerCase(),box=$('#chats');box.textContent='';let tot=0;const L=chats();
+ L.forEach(c=>tot+=c.un);document.title=(tot?'('+tot+') ':'')+'Glass Messenger';
+ if(!db||!L.length)box.append(E('div','l',db?'No contacts yet. Ask your friends to open this page — they appear here automatically.':'Connecting…'));
+ L.filter(c=>c.name.toLowerCase().includes(q)).forEach(c=>{const r=E('div','ch glass'+(c.id===cur?' act':''));
+  const a=av(c.peer||c.id,c.name,c.grp);if(c.peer&&online(c.peer))a.classList.add('on');
+  const mid=E('div','mid'),rt=E('div','rt');mid.append(E('div','n',c.name),E('div','l',c.last?(c.last.uid===me.id?'You: ':'')+c.last.text:(c.grp?'Group created':'Say hi 👋')));
+  rt.append(E('div','tm',c.last?fmt(c.last.ts):''));if(c.un)rt.append(E('div','bd',c.un));
+  r.append(a,mid,rt);r.onclick=()=>open(c.id);box.append(r)})}
+function open(id){cur=id;reply=null;rp();$('#app').classList.add('op');refresh(true);markRead();inp.focus({preventScroll:true})}
+$('#bk').onclick=()=>{cur=null;$('#app').classList.remove('op');refresh()};
+function main(force){const c=chats().find(x=>x.id===cur);
+ $('#hd').style.display=$('#comp').style.display=c?'flex':'none';
+ if(!c){list.textContent='';const e=E('div','glass','Pick a chat to start 💬');e.id='empty';list.append(e);return}
+ $('#hn').textContent=c.name;$('#hs').textContent=c.grp?c.members.map(nm).join(', '):(online(c.peer)?'online':'offline');
+ const h=$('#hav');h.textContent='';h.append(av(c.peer||c.id,c.name,c.grp));
+ const near=list.scrollHeight-list.scrollTop-list.clientHeight<140,keep=list.scrollTop;list.textContent='';
+ const first=!shown[cur],sh=shown[cur]||(shown[cur]=new Set());let day='';
+ const ms=by[cur]||[];if(!ms.length){const e=E('div','glass',c.grp?'Group created. Say something!':'Say hi 👋');e.id='empty';list.append(e)}
+ ms.forEach(m=>{const d=new Date(m.ts).toDateString();if(d!==day){day=d;list.append(E('div','day',d===new Date().toDateString()?'Today':new Date(m.ts).toLocaleDateString([],{day:'numeric',month:'short'})))}
+  const mine=m.uid===me.id,row=E('div','row'+(mine?' me':'')),w=E('div','w'),b=E('div','b glass');row.dataset.id=m.id;
+  if(c.grp&&!mine)b.append(E('div','who',nm(m.uid)));
+  if(m.re){const q=E('div','q');q.append(E('b',0,m.re.n),E('div',0,m.re.t));b.append(q)}
+  const ln=E('div','ln'),mt=E('span','mt',fmt(m.ts));
+  if(mine){const ok=(c.grp?c.members.filter(u=>u!==me.id):[c.peer]).every(u=>rdBy(u,c.id)>=m.ts);mt.append(E('span','tk'+(ok?' rd':''),ok?'✓✓':'✓'))}
+  ln.append(E('span',0,m.text),mt);b.append(ln);b.onclick=e=>{e.stopPropagation();menu(m,b,mine)};
+  if(m.id===hideId)b.classList.add('hide');else if(!first&&!sh.has(m.id)&&!mine)b.classList.add('in');sh.add(m.id);
+  w.append(b);const cnt={};Object.values(m.rx||{}).forEach(e=>cnt[e]=(cnt[e]||0)+1);
+  if(Object.keys(cnt).length){const rx=E('div','rx');Object.entries(cnt).forEach(([e,n])=>rx.append(E('span',0,n>1?e+' '+n:e)));w.append(rx)}
+  row.append(w);list.append(row)});
+ if(near||force||hideId)list.scrollTop=list.scrollHeight;else list.scrollTop=keep}
+function refresh(force){by={};M.forEach(m=>(by[m.chat]=by[m.chat]||[]).push(m));side();main(force)}
+function markRead(){if(!cur||!db||document.hidden)return;const ms=(by[cur]||[]).filter(m=>m.uid!==me.id),t=ms.length?ms[ms.length-1].ts:0;
+ if(t>rdBy(me.id,cur)){Rd[me.id]=Object.assign({},Rd[me.id],{[cur]:t});db.collection('reads').doc(me.id).set(Rd[me.id]).catch(()=>{});side()}}
+document.addEventListener('visibilitychange',markRead);
+const mn=$('#menu');document.addEventListener('click',()=>mn.style.display='none');
+function menu(m,b,mine){mn.textContent='';['❤️','😂','👍','😮','🙏'].forEach(e=>{const x=E('button',0,e);x.onclick=()=>react(m,e);mn.append(x)});
+ const r=E('button',0,'↩');r.onclick=()=>{reply={n:nm(m.uid),t:m.text.slice(0,80)};rp();inp.focus()};mn.append(r);
+ if(mine){const d=E('button',0,'🗑');d.onclick=()=>{M=M.filter(x=>x.id!==m.id);db&&db.collection('messages').doc(m.id).delete().catch(()=>{});refresh()};mn.append(d)}
+ mn.style.display='flex';const R=b.getBoundingClientRect(),w=mn.offsetWidth;
+ mn.style.top=(R.top>80?R.top-54:R.bottom+8)+'px';mn.style.left=Math.max(8,Math.min(innerWidth-w-8,R.left+R.width/2-w/2))+'px'}
+function react(m,e){const rx=Object.assign({},m.rx);if(rx[me.id]===e)delete rx[me.id];else rx[me.id]=e;m.rx=rx;refresh();db&&db.collection('messages').doc(m.id).update({rx}).catch(()=>{})}
+function rp(){const b=$('#rp');b.style.display=reply?'flex':'none';if(reply){b.querySelector('b').textContent=reply.n;b.querySelector('span').textContent=reply.t}}
+$('#rx').onclick=()=>{reply=null;rp()};
+'😀😂😍🥰😎🤔😢😡👍🙏🔥🎉❤️💯😮🙌'.match(/\p{Extended_Pictographic}\uFE0F?/gu).forEach(e=>{const x=E('button',0,e);x.onclick=()=>{inp.value+=e;upd();inp.focus()};$('#emo').append(x)});
+$('#eb').onclick=()=>{const e=$('#emo');e.style.display=e.style.display==='flex'?'none':'flex'};
+$('#q').oninput=side;
+function upd(){send.disabled=!inp.value.trim()}
+inp.addEventListener('input',upd);inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();go()}});
+send.addEventListener('pointerdown',e=>e.preventDefault());send.addEventListener('click',go);
+function go(){const text=inp.value.trim();if(!text||!cur)return;
+ const m={id:now().toString(36)+Math.random().toString(36).slice(2,6),chat:cur,uid:me.id,text,ts:now()};if(reply){m.re=reply;reply=null;rp()}
+ inp.value='';upd();$('#emo').style.display='none';send.classList.remove('go');void send.offsetWidth;send.classList.add('go');
+ hideId=m.id;M.push(m);refresh(true);requestAnimationFrame(()=>fly(m.id));
+ const d={chat:m.chat,uid:m.uid,text:m.text,ts:m.ts};if(m.re)d.re=m.re;db&&db.collection('messages').doc(m.id).set(d).catch(()=>{})}
+function fly(id){const get=()=>list.querySelector('[data-id="'+id+'"] .b');let b=get();
+ const fin=()=>{hideId=null;const x=get();if(x){x.classList.remove('hide');x.style.transformOrigin='50% 50%';x.classList.add('burst')}};
+ if(!b||!b.animate||matchMedia('(prefers-reduced-motion: reduce)').matches){fin();return}
+ const sr=send.getBoundingClientRect(),R=b.getBoundingClientRect();
+ const a=[sr.left+sr.width/2,sr.top+sr.height/2],z=[R.left+R.width/2,R.top+R.height/2];
+ const D=1300,lay=E('div');lay.id='air';document.body.append(lay);const ss=t=>t*t*(3-2*t);
+ const path=(f,to,amp,ph,sz,fade)=>{const k=[],N=30;for(let i=0;i<=N;i++){const t=i/N,e=ss(t),w=Math.sin(t*Math.PI*8+ph)*.1,
+  g=(t<.2?.25+.75*t/.2:1)*(1+.05*Math.sin(t*40))*(t>.88&&!fade?1+(t-.88)*2.4:1),
+  x=f[0]+(to[0]-f[0])*e+Math.sin(t*Math.PI*3.2+ph)*amp*Math.sin(t*Math.PI),y=f[1]+(to[1]-f[1])*e;
+  k.push({transform:'translate('+(x-sz/2)+'px,'+(y-sz/2)+'px) scale('+g*(1+w)+','+g*(1-w)+')',opacity:fade&&t>.8?Math.max(0,1-(t-.8)*5):1})}return k};
+ const mkb=(sz,fr,dl)=>{const d=E('div','air');d.style.width=d.style.height=sz+'px';lay.append(d);return d.animate(fr,{duration:D,delay:dl,easing:'linear',fill:'both'})};
+ const sz=Math.min(Math.max(R.height+8,46),64),main=mkb(sz,path(a,z,16,0,sz,false),0);
+ [[10,18,1.5,150],[7,-20,3,280],[6,8,4.5,400]].forEach(([s,dx,ph,dl])=>mkb(s,path([a[0]+dx*.3,a[1]],[a[0]+(z[0]-a[0])*.8+dx,a[1]+(z[1]-a[1])*.72],10,ph,s,true),dl));
+ let done=false;function burst(){if(done)return;done=true;lay.querySelectorAll('.air').forEach(n=>n.remove());
+  const ring=E('div','ring');ring.style.left=(z[0]-24)+'px';ring.style.top=(z[1]-24)+'px';lay.append(ring);
+  ring.animate([{transform:'scale(.5)',opacity:.9},{transform:'scale(3.4)',opacity:0}],{duration:560,easing:'cubic-bezier(.1,.7,.3,1)',fill:'both'});
+  for(let i=0;i<12;i++){const d=E('div','drop'),s=5+Math.random()*7,an=i/12*Math.PI*2+Math.random()*.4,ds=34+Math.random()*46;
+   d.style.cssText='width:'+s+'px;height:'+s+'px;left:'+(z[0]-s/2)+'px;top:'+(z[1]-s/2)+'px';lay.append(d);
+   d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:'translate('+Math.cos(an)*ds+'px,'+(Math.sin(an)*ds+16)+'px) scale(.2)',opacity:0}],{duration:620+Math.random()*200,easing:'cubic-bezier(.15,.8,.3,1)',fill:'both'})}
+  fin();setTimeout(()=>lay.remove(),950)}
+ main.onfinish=burst;setTimeout(burst,D+200)}
+$('#ng').onclick=()=>{if(!db)return;const o=E('div','mod'),s=E('div','sheet glass'),n=E('input','f');n.placeholder='Group name';n.style.borderBottom='1px solid var(--bd)';
+ const ul=E('div','pick'),sel=new Set();Object.keys(U).filter(i=>i!==me.id).forEach(i=>{const r=E('label','pk'),c=E('input');c.type='checkbox';c.onchange=()=>c.checked?sel.add(i):sel.delete(i);r.append(c,av(i),E('span',0,nm(i)));ul.append(r)});
+ const ok=E('button','pbtn','Create'),no=E('button','pbtn g','Cancel'),ac=E('div','acts');no.onclick=()=>o.remove();
+ ok.onclick=()=>{if(!n.value.trim()||!sel.size)return;const id='g_'+now().toString(36)+Math.random().toString(36).slice(2,5),g={name:n.value.trim(),members:[me.id,...sel],by:me.id,ts:now()};
+  db.collection('chats').doc(id).set(g).catch(()=>{});G.push(Object.assign({id},g));o.remove();open(id)};
+ ac.append(no,ok);s.append(E('h3',0,'New group'),n,ul,ac);o.append(s);o.onclick=e=>{if(e.target===o)o.remove()};document.body.append(o);n.focus()};
+function setup(){let id,name;try{id=localStorage.gm_id=localStorage.gm_id||'u'+Math.random().toString(36).slice(2,10);name=localStorage.gm_name}catch(e){id='u'+Math.random().toString(36).slice(2,10)}
+ me.id=id;const start=()=>{me.name=name;connect()};if(name){start();return}
+ const o=E('div','mod'),s=E('div','sheet glass'),n=E('input','f'),ok=E('button','pbtn','Start chatting');
+ n.placeholder='Pick a username';n.maxLength=20;n.style.borderBottom='1px solid var(--bd)';
+ const go2=()=>{const v=n.value.trim();if(!v)return;name=v;try{localStorage.gm_name=v}catch(e){}o.remove();start()};
+ ok.onclick=go2;n.onkeydown=e=>{if(e.key==='Enter')go2()};
+ s.append(E('h3',0,'Welcome 👋'),E('div','l','Choose the name your friends will see.'),n,ok);o.append(s);document.body.append(o);n.focus()}
+function connect(){
+ if(!window.firebase||String(FIREBASE_CONFIG.apiKey).startsWith('PASTE')){$('#chats').textContent='Setup needed: paste your Firebase config at the top of this file.';return}
+ try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.firestore()}catch(e){$('#chats').textContent='Firebase error: '+e.message;return}
+ const beat=()=>{if(!document.hidden)db.collection('users').doc(me.id).set({name:me.name,seen:now()},{merge:true}).catch(()=>{})};beat();setInterval(beat,45000);setInterval(side,30000);
+ const er=e=>{$('#chats').textContent='Database error: '+e.message};
+ db.collection('users').onSnapshot(s=>{U={};s.docs.forEach(x=>U[x.id]=x.data());U[me.id]=Object.assign({name:me.name,seen:now()},U[me.id]);refresh()},er);
+ db.collection('chats').onSnapshot(s=>{G=s.docs.map(x=>Object.assign({id:x.id},x.data()));refresh()},er);
+ db.collection('reads').onSnapshot(s=>{Rd={};s.docs.forEach(x=>Rd[x.id]=x.data());refresh()},er);
+ db.collection('messages').orderBy('ts','desc').limit(500).onSnapshot(s=>{M=s.docs.map(x=>Object.assign({id:x.id},x.data())).filter(m=>m.chat&&typeof m.text==='string').reverse();refresh();markRead()},er)}
+refresh();setup();
+</script></body></html>
